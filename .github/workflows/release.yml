@@ -135,7 +135,7 @@ jobs:
         run: |
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")" = "$APP_VERSION"
           for executable in NonSleep NonSleepHelper; do
-            lipo -verify_arch "$ARCH" "$APP_DIR/Contents/MacOS/$executable"
+            lipo "$APP_DIR/Contents/MacOS/$executable" -verify_arch "$ARCH"
             codesign --verify --strict "$APP_DIR/Contents/MacOS/$executable"
           done
           codesign --verify --strict "$APP_DIR"
