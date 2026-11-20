@@ -96,6 +96,34 @@ sudo pmset -a disablesleep 0
 
 현재 스크립트는 개발용 ad-hoc 서명을 사용합니다. 외부 배포용 Developer ID 서명과 Apple 공증은 포함하지 않습니다. 관리자 명령을 실행하는 로컬 앱이므로 App Sandbox는 사용하지 않습니다. App Store 배포 구조는 별도로 설계해야 합니다.
 
+### GitHub Release 자동 생성
+
+`.github/workflows/release.yml`은 버전 태그를 푸시하면 Apple Silicon과 Intel 환경에서 각각 테스트한 뒤 앱을 빌드합니다. 두 빌드가 모두 성공하면 다음 파일을 GitHub Release에 첨부합니다.
+
+- `NonSleep-<버전>-macos-arm64.zip`: Apple Silicon용
+- `NonSleep-<버전>-macos-x86_64.zip`: Intel용
+- `SHA256SUMS.txt`: 다운로드 파일 검증용 SHA-256 체크섬
+
+배포할 커밋에 태그를 만들고 푸시하세요. 태그는 `v0.2.0`처럼 지정하며, `v0.3.0-beta.1` 같은 태그는 프리릴리스로 게시합니다.
+
+```sh
+git tag -a v0.2.0 -m "NonSleep 0.2.0"
+git push origin v0.2.0
+```
+
+GitHub의 **Actions → Release → Run workflow**에서도 실행할 수 있습니다. `tag`를 비우고 `publish`를 끄면 선택한 브랜치를 빌드해 Actions 아티팩트만 생성합니다. 기존 태그의 Release를 만들려면 해당 태그를 입력하고 `publish`를 켜세요. 존재하지 않는 태그는 자동으로 생성하지 않습니다.
+
+Release는 두 ZIP의 체크섬 검증과 업로드가 끝난 뒤 게시합니다. 이미 게시한 Release는 덮어쓰지 않으며, 실패한 작업의 초안은 재실행 시 이어서 사용할 수 있습니다. 게시 완료 후 변경하려면 새 버전 태그를 사용하세요.
+
+별도 Secrets 없이 `GITHUB_TOKEN`으로 동작합니다. 현재 워크플로 산출물은 **ad-hoc 서명된 미공증 앱**이며, Developer ID 서명과 Apple 공증을 거친 배포본은 아닙니다. 태그의 숫자 부분을 앱 버전에, Actions 실행 번호를 빌드 번호에 기록합니다. 원본 `Resources/Info.plist`는 변경하지 않습니다.
+
+로컬에서 같은 버전 정보를 넣어 별도 폴더에 빌드하려면 다음과 같이 실행할 수 있습니다.
+
+```sh
+NONSLEEP_VERSION=0.2.0 NONSLEEP_BUILD_NUMBER=1 \
+NONSLEEP_APP_DIR="$PWD/build/release/NonSleep.app" ./scripts/build.sh
+```
+
 ## 근거
 
 - [Apple: 유휴 잠자기 방지 assertion의 범위](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridlesystemsleep)

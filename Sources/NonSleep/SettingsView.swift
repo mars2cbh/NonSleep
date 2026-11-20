@@ -105,7 +105,8 @@ struct SettingsView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             HStack {
-                Text("NonSleep 0.2.0").font(.system(size: 10)).foregroundStyle(.tertiary)
+                Text("NonSleep \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "개발 버전")")
+                    .font(.system(size: 10)).foregroundStyle(.tertiary)
                 Spacer()
                 Button("완료", action: onClose).keyboardShortcut(.defaultAction)
                     .disabled(settings.busy)
