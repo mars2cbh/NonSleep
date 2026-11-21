@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing version tag, e.g. v0.2.0 (leave empty for a build-only run)'
+        description: 'Existing version tag, e.g. v2026.11.21 (leave empty for a build-only run)'
         required: false
         type: string
       publish:
@@ -50,7 +50,9 @@ jobs:
           python3 - <<'PY'
           import os
           import plistlib
-          import re
+          import sys
+          sys.path.insert(0, "scripts")
+          from calver import CalVer
           import subprocess
 
           def git(*args):
@@ -63,19 +65,17 @@ jobs:
               raise SystemExit('Publishing requires an existing version tag.')
 
           if tag:
-              match = re.fullmatch(r'v((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?', tag)
-              if not match:
-                  raise SystemExit('Use a version tag such as v0.2.0 or v0.3.0-beta.1.')
+              parsed = CalVer.parse(tag)
+              if tag != f'v{parsed}':
+                  raise SystemExit('Use a CalVer tag such as v2026.11.21 or v2026.11.21.1.')
               commit = git('rev-parse', '--verify', f'refs/tags/{tag}^{{commit}}')
-              version, app_version = tag[1:], match.group(1)
-              prerelease = bool(match.group(2))
           else:
               commit = git('rev-parse', 'HEAD')
               with open('Resources/Info.plist', 'rb') as source:
-                  version = app_version = plistlib.load(source)['CFBundleShortVersionString']
-              if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version):
-                  raise SystemExit('Info.plist must contain a numeric app version.')
-              prerelease = False
+                  info = plistlib.load(source)
+              parsed = CalVer.parse(info['NonSleepReleaseVersion'])
+          version, app_version = str(parsed), parsed.app_version
+          prerelease = bool(parsed.modifier)
 
           values = {'tag': tag, 'version': version, 'app-version': app_version,
                     'commit': commit, 'publish': str(publish).lower(),
@@ -116,6 +116,7 @@ jobs:
           swift --version
       - name: Run tests
         run: |
+          python3 -m unittest discover -s scripts/tests -v
           swift test --disable-sandbox \
             --cache-path "$PWD/.build/cache" \
             --config-path "$PWD/.build/config" \
@@ -123,7 +124,7 @@ jobs:
       - name: Build app bundle
         env:
           NONSLEEP_APP_DIR: ${{ runner.temp }}/NonSleep.app
-          NONSLEEP_VERSION: ${{ needs.prepare.outputs.app-version }}
+          NONSLEEP_VERSION: ${{ needs.prepare.outputs.version }}
           NONSLEEP_BUILD_NUMBER: ${{ github.run_number }}
         run: ./scripts/build.sh
       - name: Verify and package
@@ -134,11 +135,12 @@ jobs:
           APP_DIR: ${{ runner.temp }}/NonSleep.app
         run: |
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")" = "$APP_VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :NonSleepReleaseVersion' "$APP_DIR/Contents/Info.plist")" = "$VERSION"
           for executable in NonSleep NonSleepHelper; do
             lipo "$APP_DIR/Contents/MacOS/$executable" -verify_arch "$ARCH"
             codesign --verify --strict "$APP_DIR/Contents/MacOS/$executable"
           done
-          codesign --verify --strict "$APP_DIR"
+          codesign --verify --deep --strict "$APP_DIR"
           mkdir -p dist
           archive="NonSleep-$VERSION-macos-$ARCH.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "dist/$archive"
@@ -153,9 +155,55 @@ jobs:
           retention-days: 14
           compression-level: 0
 
+  sign-updates:
+    name: Sign and verify update packages
+    needs: [prepare, build]
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: macos-*
+          path: dist
+          merge-multiple: true
+      - name: Verify archives and fetch pinned Sparkle signing tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && shasum -a 256 --check ./*.sha256)
+          mkdir -p "$RUNNER_TEMP/sparkle"
+          curl --fail --location --retry 3 \
+            https://github.com/sparkle-project/Sparkle/releases/download/2.10.1/Sparkle-2.10.1.tar.xz \
+            -o "$RUNNER_TEMP/sparkle.tar.xz"
+          echo "1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27  $RUNNER_TEMP/sparkle.tar.xz" | shasum -a 256 --check
+          tar -xJf "$RUNNER_TEMP/sparkle.tar.xz" -C "$RUNNER_TEMP/sparkle"
+      - name: Generate signed appcasts
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          python3 scripts/generate_appcasts.py --version "$VERSION" --dist dist \
+            --signer "$RUNNER_TEMP/sparkle/bin/sign_update"
+          (cd dist && shasum -a 256 --check SHA256SUMS.txt)
+      - name: Store complete release package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-assets
+          path: |
+            dist/*.zip
+            dist/appcast-*.xml
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
   publish:
     name: Publish GitHub Release
-    needs: [prepare, build]
+    needs: [prepare, sign-updates]
     if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -167,19 +215,19 @@ jobs:
       SOURCE_COMMIT: ${{ needs.prepare.outputs.commit }}
       PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
     steps:
-      - name: Download both builds
+      - name: Download signed release package
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: macos-*
+          name: release-assets
           path: dist
-          merge-multiple: true
       - name: Verify files and create release
         working-directory: dist
         run: |
           set -euo pipefail
           archives=(NonSleep-*-macos-*.zip)
           test "${#archives[@]}" -eq 2
-          cat ./*.sha256 > SHA256SUMS.txt
+          feeds=(appcast-*.xml)
+          test "${#feeds[@]}" -eq 2
           sha256sum --check SHA256SUMS.txt
 
           current_commit="$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)"
@@ -196,6 +244,8 @@ jobs:
           Extract `NonSleep.app` and move it to Applications. Requires macOS 14 or later.
 
           These builds use ad-hoc signing and are not notarized by Apple.
+          Updates can be checked and installed from Settings → Updates.
+          Update archives and appcasts are signed with Ed25519.
           SHA-256 checksums are provided in `SHA256SUMS.txt`.
           NOTES
             release_flags=()
@@ -209,6 +259,6 @@ jobs:
           fi
 
           gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-            "${archives[@]}" SHA256SUMS.txt --clobber
+            "${archives[@]}" "${feeds[@]}" SHA256SUMS.txt --clobber
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
             --draft=false --prerelease="$PRERELEASE"

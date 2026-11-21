@@ -1,10 +1,10 @@
 # NonSleep
 
-세 가지 기능을 각각 전환하는 macOS 메뉴 막대 앱입니다. SwiftUI로 작성했으며 외부 패키지가 필요 없습니다. macOS 14 이상에서 사용할 수 있습니다.
+세 가지 기능을 각각 전환하는 macOS 메뉴 막대 앱입니다. SwiftUI로 작성했으며 업데이트 설치에는 Sparkle 2를 사용합니다. macOS 14 이상에서 사용할 수 있습니다.
 
 ## 빌드 및 실행
 
-Xcode 15.3 이상 또는 해당 Swift 도구가 필요합니다. 프로젝트 디렉터리에서 실행하세요.
+Xcode 16.4 이상 또는 해당 Swift 도구가 필요합니다. 프로젝트 디렉터리에서 실행하세요.
 
 ```sh
 ./scripts/build.sh
@@ -96,31 +96,62 @@ sudo pmset -a disablesleep 0
 
 현재 스크립트는 개발용 ad-hoc 서명을 사용합니다. 외부 배포용 Developer ID 서명과 Apple 공증은 포함하지 않습니다. 관리자 명령을 실행하는 로컬 앱이므로 App Sandbox는 사용하지 않습니다. App Store 배포 구조는 별도로 설계해야 합니다.
 
+### 앱에서 업데이트
+
+**설정 → 업데이트** 또는 메뉴 막대 아이콘 우클릭 → **업데이트 확인…**에서 확인합니다.
+
+- GitHub API의 `mars2cbh/NonSleep/releases/latest`에서 최신 정식 Release를 확인합니다. 초안과 프리릴리스는 설치 대상으로 표시하지 않습니다.
+- 자동 확인은 기본으로 켜져 있습니다. 마지막 확인 시도로부터 6시간이 지나면 앱 실행 시 또는 실행 중 확인합니다. 설정에서 끌 수 있으며, 다운로드와 설치는 직접 선택합니다.
+- 새 버전이 있으면 **다운로드 및 설치…**를 누릅니다. Sparkle 창에서 다운로드, 서명 검증, 설치 및 재실행을 진행합니다. 이 Mac의 아키텍처에 맞는 ZIP을 선택합니다.
+- 아직 Release가 없거나, 네트워크 오류·GitHub 요청 제한·설치 파일 누락이 발생하면 상태를 표시합니다.
+- 설치 목록과 ZIP은 Ed25519 서명을 검증하며, ZIP은 압축을 풀기 전에 검증합니다. 업데이트 종료 시에도 기존 전원 설정 복원 절차를 거칩니다. 복원이 취소되거나 실패하면 종료를 중단합니다.
+
+현재 ad-hoc 서명 빌드는 업데이트 후 덮개 전원 도우미의 **업데이트 권한 승인…**이 한 번 필요할 수 있습니다. 같은 Developer ID로 서명하는 배포본에서는 이 제한을 줄일 수 있습니다.
+
+### CalVer 버전
+
+태그와 표시 버전은 **`YYYY.MM.DD[.N]`** 형식입니다. 예: `2026.11.21`, 같은 날 추가 배포 `2026.11.21.1`, 다음 날 `2026.11.22`. 실제 달력 날짜를 검증하며 월·일은 두 자리로 씁니다. 프리릴리스는 `2026.11.21-beta.1`처럼 지정할 수 있습니다.
+
+앱의 `CFBundleShortVersionString`에는 날짜 세 부분을, `NonSleepReleaseVersion`에는 추가 배포 번호까지 포함한 전체 버전을 기록합니다. Sparkle 내부 설치 순서에는 `CFBundleVersion`인 Actions 실행 번호를 사용하므로, 배포는 이 워크플로를 통해 진행하세요. 이전 SemVer 앱에서 CalVer로 넘어가는 버전 비교도 지원합니다.
+
 ### GitHub Release 자동 생성
 
-`.github/workflows/release.yml`은 버전 태그를 푸시하면 Apple Silicon과 Intel 환경에서 각각 테스트한 뒤 앱을 빌드합니다. 두 빌드가 모두 성공하면 다음 파일을 GitHub Release에 첨부합니다.
+`.github/workflows/release.yml`은 태그를 푸시하면 Apple Silicon과 Intel 환경에서 테스트하고 앱을 빌드합니다. 두 ZIP과 업데이트 목록에 서명한 뒤 다음 파일을 Release에 첨부합니다.
 
 - `NonSleep-<버전>-macos-arm64.zip`: Apple Silicon용
 - `NonSleep-<버전>-macos-x86_64.zip`: Intel용
-- `SHA256SUMS.txt`: 다운로드 파일 검증용 SHA-256 체크섬
-
-배포할 커밋에 태그를 만들고 푸시하세요. 태그는 `v0.2.0`처럼 지정하며, `v0.3.0-beta.1` 같은 태그는 프리릴리스로 게시합니다.
+- `appcast-arm64.xml`, `appcast-x86_64.xml`: 앱 업데이트 설치 목록
+- `SHA256SUMS.txt`: ZIP과 업데이트 목록의 SHA-256 체크섬
 
 ```sh
-git tag -a v0.2.0 -m "NonSleep 0.2.0"
-git push origin v0.2.0
+git tag -a v2026.11.21 -m "NonSleep 2026.11.21"
+git push origin v2026.11.21
 ```
 
-GitHub의 **Actions → Release → Run workflow**에서도 실행할 수 있습니다. `tag`를 비우고 `publish`를 끄면 선택한 브랜치를 빌드해 Actions 아티팩트만 생성합니다. 기존 태그의 Release를 만들려면 해당 태그를 입력하고 `publish`를 켜세요. 존재하지 않는 태그는 자동으로 생성하지 않습니다.
+GitHub의 **Actions → Release → Run workflow**에서도 실행할 수 있습니다. `tag`를 비우고 `publish`를 끄면 선택한 브랜치의 빌드·서명 검증과 Actions 아티팩트 생성까지 실행합니다. 기존 태그를 게시하려면 태그를 입력하고 `publish`를 켜세요. 존재하지 않는 태그는 자동으로 생성하지 않습니다.
 
-Release는 두 ZIP의 체크섬 검증과 업로드가 끝난 뒤 게시합니다. 이미 게시한 Release는 덮어쓰지 않으며, 실패한 작업의 초안은 재실행 시 이어서 사용할 수 있습니다. 게시 완료 후 변경하려면 새 버전 태그를 사용하세요.
+Release는 모든 파일 검증과 업로드가 끝난 뒤 게시합니다. 이미 게시한 Release는 덮어쓰지 않으며, 실패한 작업의 초안은 재실행 시 이어서 사용할 수 있습니다. 변경하려면 새 버전 태그를 사용하세요. `-beta.1` 등의 태그는 프리릴리스로 게시합니다.
 
-별도 Secrets 없이 `GITHUB_TOKEN`으로 동작합니다. 현재 워크플로 산출물은 **ad-hoc 서명된 미공증 앱**이며, Developer ID 서명과 Apple 공증을 거친 배포본은 아닙니다. 태그의 숫자 부분을 앱 버전에, Actions 실행 번호를 빌드 번호에 기록합니다. 원본 `Resources/Info.plist`는 변경하지 않습니다.
+### 업데이트 서명 키
 
-로컬에서 같은 버전 정보를 넣어 별도 폴더에 빌드하려면 다음과 같이 실행할 수 있습니다.
+현재 저장소에는 `SPARKLE_PRIVATE_KEY` Actions Secret이 등록되어 있습니다. 공개 키는 `Resources/Info.plist`의 `SUPublicEDKey`에만 기록합니다. 워크플로는 비밀 키와 앱 공개 키의 일치를 확인하고, 비밀 키는 서명 도구의 표준 입력으로만 전달합니다. ZIP·아티팩트·로그에는 비밀 키를 넣지 않습니다. 서명 도구의 다운로드 파일도 고정된 SHA-256으로 검증합니다.
+
+로컬 키 백업은 저장소 밖 `~/Library/Application Support/NonSleep/ReleaseSigning/ed25519.key`에 있으며 파일 권한은 `600`입니다. 이 파일을 안전하게 백업하세요. 기존 키를 잃거나 무심코 교체하면 이미 배포한 앱이 새 업데이트를 검증할 수 없습니다.
+
+포크한 저장소는 별도 키를 생성하고 공개 키와 Secret을 함께 설정해야 합니다. 현재 앱의 GitHub 저장소 주소도 코드와 배포 스크립트에서 자신의 저장소로 변경해야 합니다.
 
 ```sh
-NONSLEEP_VERSION=0.2.0 NONSLEEP_BUILD_NUMBER=1 \
+swift scripts/update-key.swift create /secure/location/ed25519.key
+# 출력된 공개 키를 Info.plist의 SUPublicEDKey에 설정합니다.
+gh secret set SPARKLE_PRIVATE_KEY --repo OWNER/REPO < /secure/location/ed25519.key
+```
+
+현재 산출물은 **ad-hoc 서명된 미공증 앱**입니다. Sparkle 업데이트 서명은 Apple Developer ID 서명이나 공증을 대신하지 않습니다. Sparkle 및 포함 라이브러리의 라이선스는 `Resources/Sparkle-LICENSE.txt`에 있으며 앱에도 함께 배포합니다.
+
+로컬에서 버전 정보를 넣어 별도 폴더에 빌드할 수 있습니다.
+
+```sh
+NONSLEEP_VERSION=2026.11.21.1 NONSLEEP_BUILD_NUMBER=10 \
 NONSLEEP_APP_DIR="$PWD/build/release/NonSleep.app" ./scripts/build.sh
 ```
 
@@ -131,3 +162,6 @@ NONSLEEP_APP_DIR="$PWD/build/release/NonSleep.app" ./scripts/build.sh
 - [Apple: 로그인 항목과 서비스 관리](https://developer.apple.com/documentation/servicemanagement/smappservice)
 - [Apple: XPC 연결의 코드 서명 검증](https://developer.apple.com/documentation/foundation/nsxpcconnection/setcodesigningrequirement(_:))
 - [Apple 공개 소스: pmset의 disablesleep 처리](https://github.com/apple-oss-distributions/PowerManagement/blob/main/pmset/pmset.m)
+
+- [Sparkle: 업데이트 통합 및 서명](https://sparkle-project.org/documentation/)
+- [GitHub: 최신 Release API](https://docs.github.com/en/rest/releases/releases#get-the-latest-release)

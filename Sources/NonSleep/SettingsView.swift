@@ -15,6 +15,8 @@ struct SettingsView: View {
         TabView(selection: $model.settingsTab) {
             general.tabItem { Label("일반", systemImage: "gearshape") }.tag(SettingsTab.general)
             FocusSetup(model: model, onDone: onClose).tabItem { Label("방해 금지", systemImage: "moon") }.tag(SettingsTab.focus)
+            UpdateSettingsView(updates: model.updates, onClose: onClose)
+                .tabItem { Label("업데이트", systemImage: "arrow.triangle.2.circlepath") }.tag(SettingsTab.updates)
         }
         .padding(.top, 12)
         .frame(width: 542, height: 700)
@@ -105,7 +107,7 @@ struct SettingsView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             HStack {
-                Text("NonSleep \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "개발 버전")")
+                Text("NonSleep \(model.updates.installedVersion)")
                     .font(.system(size: 10)).foregroundStyle(.tertiary)
                 Spacer()
                 Button("완료", action: onClose).keyboardShortcut(.defaultAction)

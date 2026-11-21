@@ -30,6 +30,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         let settingsItem = NSMenuItem(title: "설정…", action: #selector(openGeneralSettings), keyEquivalent: ",")
         settingsItem.target = self
         appMenu.addItem(settingsItem)
+        let updateItem = NSMenuItem(title: "업데이트 확인…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        appMenu.addItem(updateItem)
         appMenu.addItem(.separator())
         let quitItem = NSMenuItem(title: "NonSleep 종료", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
@@ -63,6 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             else { self?.settingsWindow?.orderOut(nil) }
         }
         Task { await model.refresh() }
+        model.updates.startAutomaticChecks()
     }
 
     private func showSettingsWindow() {
@@ -147,6 +151,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         menu.addItem(.separator())
         addItem(to: menu, title: "제어판 열기", action: #selector(openDashboard))
         addItem(to: menu, title: "설정…", action: #selector(openGeneralSettings))
+        addItem(to: menu, title: "업데이트 확인…", action: #selector(checkForUpdates))
         menu.addItem(.separator())
         addItem(to: menu, title: "NonSleep 종료", action: #selector(quit), enabled: model.busy == nil)
         statusItem.menu = menu
@@ -179,6 +184,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         model.openSettings()
     }
     @objc private func quit() { NSApp.terminate(nil) }
+    @objc private func checkForUpdates() {
+        model.openSettings(.updates)
+        Task { await model.updates.checkNow() }
+    }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if settingsWindow?.isVisible == true {
