@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing version tag, e.g. v2026.11.21 (leave empty for a build-only run)'
+        description: 'Optional existing tag; leave empty to auto-create a CalVer tag when publishing'
         required: false
         type: string
       publish:
-        description: 'Publish a GitHub Release for the existing tag'
+        description: 'Publish a GitHub Release (blank tag uses today’s CalVer)'
         required: true
         default: false
         type: boolean
@@ -35,56 +35,19 @@ jobs:
       commit: ${{ steps.version.outputs.commit }}
       publish: ${{ steps.version.outputs.publish }}
       prerelease: ${{ steps.version.outputs.prerelease }}
+      create-tag: ${{ steps.version.outputs.create-tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Resolve existing tag or selected build ref
+      - name: Resolve CalVer and selected build source
         id: version
         env:
           REQUESTED_TAG: ${{ inputs.tag }}
           REQUESTED_PUBLISH: ${{ inputs.publish }}
         shell: bash
-        run: |
-          python3 - <<'PY'
-          import os
-          import plistlib
-          import sys
-          sys.path.insert(0, "scripts")
-          from calver import CalVer
-          import subprocess
-
-          def git(*args):
-              return subprocess.check_output(['git', *args], text=True).strip()
-
-          pushed_tag = os.environ['GITHUB_EVENT_NAME'] == 'push'
-          tag = os.environ['GITHUB_REF_NAME'] if pushed_tag else os.environ.get('REQUESTED_TAG', '').strip()
-          publish = pushed_tag or os.environ.get('REQUESTED_PUBLISH') == 'true'
-          if publish and not tag:
-              raise SystemExit('Publishing requires an existing version tag.')
-
-          if tag:
-              parsed = CalVer.parse(tag)
-              if tag != f'v{parsed}':
-                  raise SystemExit('Use a CalVer tag such as v2026.11.21 or v2026.11.21.1.')
-              commit = git('rev-parse', '--verify', f'refs/tags/{tag}^{{commit}}')
-          else:
-              commit = git('rev-parse', 'HEAD')
-              with open('Resources/Info.plist', 'rb') as source:
-                  info = plistlib.load(source)
-              parsed = CalVer.parse(info['NonSleepReleaseVersion'])
-          version, app_version = str(parsed), parsed.app_version
-          prerelease = bool(parsed.modifier)
-
-          values = {'tag': tag, 'version': version, 'app-version': app_version,
-                    'commit': commit, 'publish': str(publish).lower(),
-                    'prerelease': str(prerelease).lower()}
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              for key, value in values.items():
-                  output.write(f'{key}={value}\n')
-          print(f'Source: {commit}; version: {version}; publish: {publish}')
-          PY
+        run: python3 scripts/resolve_release.py
 
   build:
     name: Build and test (${{ matrix.arch }})
@@ -214,6 +177,7 @@ jobs:
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
       SOURCE_COMMIT: ${{ needs.prepare.outputs.commit }}
       PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+      CREATE_TAG: ${{ needs.prepare.outputs.create-tag }}
     steps:
       - name: Download signed release package
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -230,6 +194,10 @@ jobs:
           test "${#feeds[@]}" -eq 2
           sha256sum --check SHA256SUMS.txt
 
+          if [[ "$CREATE_TAG" == true ]] && ! gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" > /dev/null 2>&1; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$RELEASE_TAG" -f sha="$SOURCE_COMMIT" > /dev/null
+          fi
           current_commit="$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)"
           test "$current_commit" = "$SOURCE_COMMIT"
 
