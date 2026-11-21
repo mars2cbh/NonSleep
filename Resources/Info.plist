@@ -29,7 +29,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 NonSleep</string>
 	<key>NonSleepReleaseVersion</key>
-	<string>2026.11.21</string>
+	<string>2026.11.21.1</string>
 	<key>SUPublicEDKey</key>
 	<string>Z/8Cj/ItrwbJzruoUBqa8ZsnvwuoMNsheUUD2H60Gq4=</string>
 	<key>SUEnableAutomaticChecks</key>
@@ -40,5 +40,12 @@
 	<true/>
 	<key>SUVerifyUpdateBeforeExtraction</key>
 	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ko</string>
+	</array>
 </dict>
 </plist>

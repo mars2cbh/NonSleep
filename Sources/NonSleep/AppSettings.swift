@@ -1,3 +1,4 @@
+import NonSleepCore
 import AppKit
 import Combine
 import ServiceManagement
@@ -7,12 +8,12 @@ enum HelperState {
     case checking, notInstalled, ready, appUpdated, needsUpdate, unavailable
     var title: String {
         switch self {
-        case .checking: return "상태 확인 중"
-        case .notInstalled: return "등록되지 않음"
-        case .ready: return "권한 승인됨 · 연결됨"
-        case .appUpdated: return "앱 업데이트로 권한 갱신 필요"
-        case .needsUpdate: return "다시 등록 필요"
-        case .unavailable: return "연결 확인 필요"
+        case .checking: return L10n.tr("Checking status…")
+        case .notInstalled: return L10n.tr("Not registered")
+        case .ready: return L10n.tr("Authorized · Connected")
+        case .appUpdated: return L10n.tr("App updated · Renew approval")
+        case .needsUpdate: return L10n.tr("Registration required again")
+        case .unavailable: return L10n.tr("Connection needs attention")
         }
     }
 }
@@ -48,11 +49,11 @@ final class AppSettings: ObservableObject {
     var loginEnabled: Bool { loginStatus == .enabled }
     var loginStatusTitle: String {
         switch loginStatus {
-        case .enabled: return "켜짐"
-        case .requiresApproval: return "시스템 설정에서 승인 필요"
-        case .notFound: return "앱 등록을 확인할 수 없음"
-        case .notRegistered: return "꺼짐"
-        @unknown default: return "상태 미확인"
+        case .enabled: return L10n.tr("On")
+        case .requiresApproval: return L10n.tr("Approval needed in System Settings")
+        case .notFound: return L10n.tr("App registration could not be verified")
+        case .notRegistered: return L10n.tr("Off")
+        @unknown default: return L10n.tr("Status unknown")
         }
     }
 
@@ -90,7 +91,7 @@ final class AppSettings: ObservableObject {
             } else if loginService.status != .notRegistered {
                 try await loginService.unregister()
             }
-        } catch { errorMessage = "로그인 자동 실행 설정을 변경하지 못했습니다. \(error.localizedDescription)" }
+        } catch { errorMessage = L10n.tr("Could not change launch-at-login settings. %@", error.localizedDescription) }
     }
 
     func installHelper() async {
@@ -98,7 +99,7 @@ final class AppSettings: ObservableObject {
         busy = true
         defer { busy = false }
         do { try await HelperInstaller.install() }
-        catch { errorMessage = "전원 도우미 등록을 완료하지 못했습니다. \(error.localizedDescription)" }
+        catch { errorMessage = L10n.tr("Could not register the power helper. %@", error.localizedDescription) }
         await checkHelper()
     }
 
@@ -107,7 +108,7 @@ final class AppSettings: ObservableObject {
         busy = true
         defer { busy = false }
         do { try await HelperInstaller.uninstall() }
-        catch { errorMessage = "전원 도우미 제거를 완료하지 못했습니다. \(error.localizedDescription)" }
+        catch { errorMessage = L10n.tr("Could not remove the power helper. %@", error.localizedDescription) }
         await checkHelper()
     }
 

@@ -63,7 +63,7 @@ enum HelperInstaller {
         """
         try await runPrivileged(script)
         guard inspect() == .installed else {
-            throw AppError.message("전원 도우미 설치를 확인하지 못했습니다. 설정에서 다시 등록해 주세요.")
+            throw AppError.message(L10n.tr("The power helper installation could not be verified. Register it again in Settings."))
         }
         try await HelperClient.ping()
     }
@@ -79,7 +79,7 @@ enum HelperInstaller {
         """
         try await runPrivileged(script)
         guard inspect() == .notInstalled else {
-            throw AppError.message("전원 도우미 제거를 확인하지 못했습니다.")
+            throw AppError.message(L10n.tr("The power helper removal could not be verified."))
         }
     }
 

@@ -1,8 +1,11 @@
+import NonSleepCore
 import SwiftUI
 
 struct UpdateSettingsView: View {
     @ObservedObject var updates: AppUpdates
     let onClose: () -> Void
+
+    @ObservedObject private var language = LanguageSettings.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
@@ -10,8 +13,8 @@ struct UpdateSettingsView: View {
                 Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
                     .font(.system(size: 34)).foregroundStyle(.blue)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("NonSleep 업데이트").font(.system(size: 21, weight: .semibold))
-                    Text("현재 버전 \(updates.installedVersion)")
+                    Text(L10n.tr("NonSleep Updates")).font(.system(size: 21, weight: .semibold))
+                    Text(L10n.tr("Current version %@", updates.installedVersion))
                         .font(.system(size: 12)).foregroundStyle(.secondary)
                 }
             }
@@ -26,18 +29,18 @@ struct UpdateSettingsView: View {
                 if let candidate = updates.candidate {
                     Text("\(updates.installedVersion) → \(candidate.version.description)")
                         .font(.system(size: 12, design: .monospaced)).foregroundStyle(.secondary)
-                    Link("GitHub에서 변경 사항 보기", destination: candidate.releaseURL).font(.system(size: 12))
+                    Link(L10n.tr("View Changes on GitHub"), destination: candidate.releaseURL).font(.system(size: 12))
                 }
                 HStack {
-                    Button("업데이트 확인") { Task { await updates.checkNow() } }
+                    Button(L10n.tr("Check for Updates")) { Task { await updates.checkNow() } }
                         .disabled(updates.isBusy)
                     if updates.candidate != nil {
-                        Button("다운로드 및 설치…", action: updates.downloadAndInstall)
+                        Button(L10n.tr("Download and Install…"), action: updates.downloadAndInstall)
                             .buttonStyle(.borderedProminent).disabled(!updates.canInstall)
                     }
                 }
                 if let lastChecked = updates.lastChecked {
-                    Text("마지막 확인: \(lastChecked.formatted(date: .numeric, time: .shortened))")
+                    Text(L10n.tr("Last checked: %@", lastChecked.formatted(Date.FormatStyle(date: .numeric, time: .shortened).locale(language.locale))))
                         .font(.system(size: 10)).foregroundStyle(.secondary)
                 }
             }
@@ -45,22 +48,22 @@ struct UpdateSettingsView: View {
             .background(.blue.opacity(0.05), in: RoundedRectangle(cornerRadius: 14))
 
             VStack(alignment: .leading, spacing: 10) {
-                Toggle("자동으로 업데이트 확인", isOn: $updates.automaticallyChecks).toggleStyle(.switch)
+                Toggle(L10n.tr("Automatically check for updates"), isOn: $updates.automaticallyChecks).toggleStyle(.switch)
                     .font(.system(size: 13, weight: .semibold))
-                Text("앱 실행 시와 실행 중 6시간 간격으로 GitHub의 최신 정식 Release를 확인합니다. 설치는 직접 선택할 수 있습니다.")
+                Text(L10n.tr("Check GitHub’s latest stable release at launch and every 6 hours while running. You choose when to install."))
                     .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(3)
             }
             .padding(18).background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
 
-            Text("이 Mac에 맞는 설치 파일을 다운로드하고 전자서명을 확인합니다. 설치가 완료되면 앱이 자동으로 다시 시작됩니다.")
+            Text(L10n.tr("Download the update for this Mac and verify its signature. The app restarts after installation."))
                 .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(3)
-            Link("모든 Release 보기", destination: URL(string: "https://github.com/mars2cbh/NonSleep/releases")!)
+            Link(L10n.tr("View All Releases"), destination: URL(string: "https://github.com/mars2cbh/NonSleep/releases")!)
                 .font(.system(size: 12))
             Spacer(minLength: 0)
             HStack {
                 Text("CalVer · YYYY.MM.DD[.N]").font(.system(size: 10)).foregroundStyle(.tertiary)
                 Spacer()
-                Button("완료", action: onClose).keyboardShortcut(.defaultAction)
+                Button(L10n.tr("Done"), action: onClose).keyboardShortcut(.defaultAction)
             }
         }
         .padding(26)

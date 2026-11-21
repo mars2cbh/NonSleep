@@ -55,7 +55,7 @@ public enum SigningIdentity {
 
     private static func failure(_ status: OSStatus) -> NSError {
         NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: [
-            NSLocalizedDescriptionKey: "앱 코드 서명을 확인하지 못했습니다. 앱을 다시 빌드하거나 설치해 주세요. (\(status))"
+            NSLocalizedDescriptionKey: L10n.tr("The app code signature could not be verified. Rebuild or reinstall the app. (%d)", status)
         ])
     }
 }

@@ -1,3 +1,4 @@
+import NonSleepCore
 import SwiftUI
 import AppKit
 import Combine
@@ -22,26 +23,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let popover = NSPopover()
     private var statusObservation: AnyCancellable?
     private var settingsObservation: AnyCancellable?
+    private var languageObservation: AnyCancellable?
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        let appMenu = NSMenu(title: "NonSleep")
-        let settingsItem = NSMenuItem(title: "설정…", action: #selector(openGeneralSettings), keyEquivalent: ",")
-        settingsItem.target = self
-        appMenu.addItem(settingsItem)
-        let updateItem = NSMenuItem(title: "업데이트 확인…", action: #selector(checkForUpdates), keyEquivalent: "")
-        updateItem.target = self
-        appMenu.addItem(updateItem)
-        appMenu.addItem(.separator())
-        let quitItem = NSMenuItem(title: "NonSleep 종료", action: #selector(quit), keyEquivalent: "q")
-        quitItem.target = self
-        appMenu.addItem(quitItem)
-        let menuBar = NSMenu()
-        let appMenuItem = NSMenuItem()
-        appMenuItem.submenu = appMenu
-        menuBar.addItem(appMenuItem)
-        NSApp.mainMenu = menuBar
+        rebuildApplicationMenu()
 
         let controller = NSHostingController(rootView: Dashboard(model: model))
         controller.sizingOptions = [.preferredContentSize]
@@ -65,8 +52,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             if show { self?.showSettingsWindow() }
             else { self?.settingsWindow?.orderOut(nil) }
         }
+        languageObservation = LanguageSettings.shared.$selection.dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.rebuildApplicationMenu()
+                self.settingsWindow?.title = L10n.tr("NonSleep Settings")
+                self.updateStatusIcon(appearance: self.model.statusAppearance)
+            }
         Task { await model.refresh() }
         model.updates.startAutomaticChecks()
+    }
+
+    private func rebuildApplicationMenu() {
+        let appMenu = NSMenu(title: "NonSleep")
+        let settingsItem = NSMenuItem(title: L10n.tr("Settings…"), action: #selector(openGeneralSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        appMenu.addItem(settingsItem)
+        let updateItem = NSMenuItem(title: L10n.tr("Check for Updates…"), action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        appMenu.addItem(updateItem)
+        appMenu.addItem(.separator())
+        let quitItem = NSMenuItem(title: L10n.tr("Quit NonSleep"), action: #selector(quit), keyEquivalent: "q")
+        quitItem.target = self
+        appMenu.addItem(quitItem)
+        let menuBar = NSMenu()
+        let appMenuItem = NSMenuItem()
+        appMenuItem.submenu = appMenu
+        menuBar.addItem(appMenuItem)
+        NSApp.mainMenu = menuBar
+
     }
 
     private func showSettingsWindow() {
@@ -80,7 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             let controller = NSHostingController(rootView: view)
             controller.sizingOptions = [.preferredContentSize]
             let window = NSWindow(contentViewController: controller)
-            window.title = "NonSleep 설정"
+            window.title = L10n.tr("NonSleep Settings")
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.isReleasedWhenClosed = false
             window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
@@ -103,7 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         guard let button = statusItem?.button else { return }
         button.image = appearance.makeStatusImage()
         button.imagePosition = .imageOnly
-        button.toolTip = "NonSleep · \(appearance.activeCount)개 기능 사용 중\n\(appearance.featureDescription)\n클릭: 제어판 · 우클릭: 빠른 제어"
+        button.toolTip = L10n.tr("NonSleep · Enabled features: %d\n%@\nClick: Dashboard · Right-click: Quick controls", appearance.activeCount, appearance.featureDescription)
         button.setAccessibilityLabel("NonSleep, \(appearance.featureDescription)")
     }
 
@@ -137,23 +152,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         heading.isEnabled = false
         menu.addItem(heading)
         menu.addItem(.separator())
-        addItem(to: menu, title: "잠자기 방지", action: #selector(toggleAwake),
+        addItem(to: menu, title: L10n.tr("Keep Awake"), action: #selector(toggleAwake),
                 state: model.awake ? .on : .off, enabled: model.busy == nil)
-        addItem(to: menu, title: "덮어도 깨어 있기", action: #selector(toggleLid),
+        addItem(to: menu, title: L10n.tr("Stay Awake with Lid Closed"), action: #selector(toggleLid),
                 state: model.lidKnown ? (model.lid ? .on : .off) : .mixed,
                 enabled: model.busy == nil && model.lidKnown)
-        addItem(to: menu, title: model.focusConfigured ? "방해 금지" : "방해 금지 연결…",
+        addItem(to: menu, title: model.focusConfigured ? L10n.tr("Do Not Disturb") : L10n.tr("Set Up Do Not Disturb…"),
                 action: #selector(toggleFocus),
                 state: model.focusRequest.map { $0 ? .on : .off } ?? .mixed, enabled: model.busy == nil)
         if model.focusConfigured {
-            addItem(to: menu, title: "방해 금지 끄기 실행", action: #selector(turnFocusOff), enabled: model.busy == nil)
+            addItem(to: menu, title: L10n.tr("Turn Off Do Not Disturb"), action: #selector(turnFocusOff), enabled: model.busy == nil)
         }
         menu.addItem(.separator())
-        addItem(to: menu, title: "제어판 열기", action: #selector(openDashboard))
-        addItem(to: menu, title: "설정…", action: #selector(openGeneralSettings))
-        addItem(to: menu, title: "업데이트 확인…", action: #selector(checkForUpdates))
+        addItem(to: menu, title: L10n.tr("Open Dashboard"), action: #selector(openDashboard))
+        addItem(to: menu, title: L10n.tr("Settings…"), action: #selector(openGeneralSettings))
+        addItem(to: menu, title: L10n.tr("Check for Updates…"), action: #selector(checkForUpdates))
         menu.addItem(.separator())
-        addItem(to: menu, title: "NonSleep 종료", action: #selector(quit), enabled: model.busy == nil)
+        addItem(to: menu, title: L10n.tr("Quit NonSleep"), action: #selector(quit), enabled: model.busy == nil)
         statusItem.menu = menu
         button.performClick(nil)
     }

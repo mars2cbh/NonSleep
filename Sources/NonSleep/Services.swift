@@ -53,10 +53,10 @@ enum Commands {
         let result = try await run(executable, arguments, timeout: timeout)
         guard result.status == 0 else {
             if result.error.contains("-128") {
-                throw AppError.message("관리자 인증을 취소했습니다. 설정을 변경하지 않았습니다.")
+                throw AppError.message(L10n.tr("Administrator authentication was canceled. No settings were changed."))
             }
             let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
-            throw AppError.message(detail.isEmpty ? "작업을 완료하지 못했습니다. 다시 시도해 주세요." : String(detail.prefix(600)))
+            throw AppError.message(detail.isEmpty ? L10n.tr("The action could not be completed. Please try again.") : String(detail.prefix(600)))
         }
         return result.output
     }
@@ -72,9 +72,9 @@ final class AwakeService {
             for type in [kIOPMAssertionTypePreventUserIdleSystemSleep, kIOPMAssertionTypePreventUserIdleDisplaySleep] {
                 var identifier: IOPMAssertionID = 0
                 let result = IOPMAssertionCreateWithName(type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn),
-                    "NonSleep · 사용자가 잠자기 방지를 켰습니다" as CFString, &identifier)
+                    L10n.tr("NonSleep · Keep Awake was enabled by the user") as CFString, &identifier)
                 guard result == kIOReturnSuccess else {
-                    throw AppError.message("잠자기 방지를 시작하지 못했습니다. (IOKit \(result))")
+                    throw AppError.message(L10n.tr("Could not enable Keep Awake. (IOKit %d)", result))
                 }
                 assertions.append(identifier)
             }
@@ -100,16 +100,16 @@ enum LidService {
         case .installed:
             try await HelperClient.setSleepDisabled(enabled)
         case .appUpdated:
-            throw AppError.message("앱이 업데이트되어 전원 도우미의 권한 승인을 갱신해야 합니다. 설정 → 일반 → 업데이트 권한 승인에서 한 번 승인해 주세요. 같은 앱의 재실행에는 갱신이 필요하지 않습니다.")
+            throw AppError.message(L10n.tr("This app was updated and the power helper needs renewed approval. Choose Settings → General → Approve Update once. Restarting the same app does not require approval again."))
         case .needsUpdate:
-            throw AppError.message("전원 도우미를 현재 앱 버전으로 다시 등록해야 합니다. 설정 → 일반 → 덮개 잠자기 권한에서 등록해 주세요.")
+            throw AppError.message(L10n.tr("Register the power helper for this app version in Settings → General → Closed-Lid Permission."))
         case .notInstalled:
             let command = "/usr/bin/pmset -a disablesleep \(enabled ? 1 : 0)"
             let script = "do shell script \(PowerSettings.appleScriptString(command)) with administrator privileges"
             _ = try await Commands.checked("/usr/bin/osascript", ["-e", script], timeout: 120)
         }
         guard try await read() == enabled else {
-            throw AppError.message("이 Mac에서 덮개 잠자기 설정 변경을 확인하지 못했습니다. macOS 또는 기기에 따라 지원되지 않을 수 있습니다.")
+            throw AppError.message(L10n.tr("The closed-lid sleep setting could not be verified. This Mac or macOS version may not support it."))
         }
     }
 }

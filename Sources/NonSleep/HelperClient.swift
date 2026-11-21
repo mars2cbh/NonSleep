@@ -26,14 +26,14 @@ enum HelperClient {
             proxy.ping { finish(.success($0)) }
         }
         guard version == HelperConfiguration.version else {
-            throw AppError.message("전원 도우미 버전이 다릅니다. 설정에서 도우미를 다시 등록해 주세요.")
+            throw AppError.message(L10n.tr("The power helper version does not match. Register it again in Settings."))
         }
     }
 
     static func setSleepDisabled(_ enabled: Bool) async throws {
         let _: Bool = try await request { proxy, finish in
             proxy.setSleepDisabled(enabled) { error in
-                if let error { finish(.failure(AppError.message(error))) }
+                if let error { finish(.failure(AppError.message(L10n.tr(error)))) }
                 else { finish(.success(true)) }
             }
         }
@@ -51,19 +51,19 @@ enum HelperClient {
         }
         return try await withCheckedThrowingContinuation { continuation in
             let gate = ReplyGate<Value>(continuation)
-            let disconnected = AppError.message("전원 도우미에 연결하지 못했습니다. 설정에서 도우미 상태를 확인하거나 다시 등록해 주세요.")
+            let disconnected = AppError.message(L10n.tr("Could not connect to the power helper. Check its status or register it again in Settings."))
             connection.invalidationHandler = { gate.finish(.failure(disconnected)) }
             connection.interruptionHandler = { gate.finish(.failure(disconnected)) }
             connection.resume()
             guard let proxy = connection.remoteObjectProxyWithErrorHandler({ error in
-                gate.finish(.failure(AppError.message("전원 도우미 통신 오류: \(error.localizedDescription)")))
+                gate.finish(.failure(AppError.message(L10n.tr("Power helper communication error: %@", error.localizedDescription))))
             }) as? NonSleepHelperProtocol else {
                 gate.finish(.failure(disconnected))
                 return
             }
             invoke(proxy, gate.finish)
             DispatchQueue.global().asyncAfter(deadline: .now() + 12) {
-                gate.finish(.failure(AppError.message("전원 도우미 응답 시간이 초과되었습니다. 설정에서 다시 확인해 주세요.")))
+                gate.finish(.failure(AppError.message(L10n.tr("The power helper timed out. Check its status in Settings."))))
             }
         }
     }

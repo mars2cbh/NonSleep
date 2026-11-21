@@ -38,13 +38,13 @@ final class AppUpdates: NSObject, ObservableObject, SPUUpdaterDelegate {
     var canInstall: Bool { candidate != nil && !isBusy }
     var statusText: String {
         switch phase {
-        case .idle: return "GitHub의 새 Release를 확인할 수 있습니다."
-        case .checking: return "GitHub에서 새 버전을 확인하고 있습니다…"
-        case .noRelease: return "아직 공개된 정식 Release가 없습니다."
-        case .upToDate: return "최신 버전을 사용하고 있습니다."
-        case .available: return "새 버전 \(candidate?.version.description ?? "")을 사용할 수 있습니다."
-        case .installing: return "업데이트 창에서 다운로드와 설치를 진행해 주세요."
-        case .failed: return message ?? "업데이트를 확인하지 못했습니다."
+        case .idle: return L10n.tr("Check GitHub for a new release.")
+        case .checking: return L10n.tr("Checking GitHub for a new version…")
+        case .noRelease: return L10n.tr("No stable release has been published yet.")
+        case .upToDate: return L10n.tr("You’re up to date.")
+        case .available: return L10n.tr("Version %@ is available.", candidate?.version.description ?? "")
+        case .installing: return L10n.tr("Continue downloading and installing in the update window.")
+        case .failed: return message ?? L10n.tr("Could not check for updates.")
         }
     }
 
@@ -98,7 +98,7 @@ final class AppUpdates: NSObject, ObservableObject, SPUUpdaterDelegate {
         do {
             guard let key = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String,
                   Data(base64Encoded: key)?.count == 32 else {
-                throw AppError.message("업데이트 검증 키가 없는 빌드입니다. 공식 Release의 앱을 사용해 주세요.")
+                throw AppError.message(L10n.tr("This build has no update verification key. Use an official release of the app."))
             }
             if !sparkleStarted {
                 controller.updater.automaticallyChecksForUpdates = false
@@ -124,7 +124,7 @@ final class AppUpdates: NSObject, ObservableObject, SPUUpdaterDelegate {
         guard let candidate,
               updateItem.fileURL == candidate.archiveURL,
               updateItem.displayVersionString == candidate.version.description else {
-            throw AppError.message("GitHub에서 확인한 버전과 설치 정보가 일치하지 않습니다. 다시 확인해 주세요.")
+            throw AppError.message(L10n.tr("The update information does not match the GitHub release. Please check again."))
         }
     }
 

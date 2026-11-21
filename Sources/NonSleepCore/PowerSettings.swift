@@ -31,7 +31,7 @@ public enum PowerSettings {
 
 public enum SettingsError: LocalizedError {
     case unreadable
-    public var errorDescription: String? { "macOS 전원 설정을 확인하지 못했습니다. 다시 시도해 주세요." }
+    public var errorDescription: String? { L10n.tr("The macOS power settings could not be read. Please try again.") }
 }
 
 /// Written before a privileged mutation, and removed only after verified restoration.

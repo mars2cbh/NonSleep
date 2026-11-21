@@ -99,6 +99,11 @@ jobs:
         run: |
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")" = "$APP_VERSION"
           test "$(/usr/libexec/PlistBuddy -c 'Print :NonSleepReleaseVersion' "$APP_DIR/Contents/Info.plist")" = "$VERSION"
+          for language in en ko; do
+            strings="$APP_DIR/Contents/Resources/NonSleep_NonSleepCore.bundle/$language.lproj/Localizable.strings"
+            test -s "$strings"
+            plutil -lint "$strings"
+          done
           for executable in NonSleep NonSleepHelper; do
             lipo "$APP_DIR/Contents/MacOS/$executable" -verify_arch "$ARCH"
             codesign --verify --strict "$APP_DIR/Contents/MacOS/$executable"

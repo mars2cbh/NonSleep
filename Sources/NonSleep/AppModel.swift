@@ -105,7 +105,7 @@ final class AppModel: ObservableObject {
         do {
             let output = try await Commands.checked("/usr/bin/shortcuts", ["list"])
             shortcuts = output.components(separatedBy: .newlines).filter { !$0.isEmpty }.sorted()
-        } catch { errorMessage = "단축어 목록을 가져오지 못했습니다. \(error.localizedDescription)" }
+        } catch { errorMessage = L10n.tr("Could not load shortcuts. %@", error.localizedDescription) }
     }
 
     func setFocus(_ enabled: Bool) async {
@@ -120,7 +120,7 @@ final class AppModel: ObservableObject {
         } catch {
             // A shortcut may partially run before failing. Do not display a stale success state.
             focusRequest = nil
-            errorMessage = "방해 금지 단축어 실행을 확인하지 못했습니다. \(error.localizedDescription)"
+            errorMessage = L10n.tr("Could not verify the Do Not Disturb shortcut. %@", error.localizedDescription)
         }
     }
 
@@ -128,7 +128,7 @@ final class AppModel: ObservableObject {
     func prepareToQuit() async -> Bool {
         guard !quitting else { return false }
         guard busy == nil, !settings.busy else {
-            errorMessage = "진행 중인 작업이 끝나면 종료해 주세요."
+            errorMessage = L10n.tr("Wait for the current action to finish before quitting.")
             return false
         }
         quitting = true

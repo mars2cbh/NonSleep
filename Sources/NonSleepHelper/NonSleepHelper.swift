@@ -57,7 +57,7 @@ final class PowerControl: NSObject, NonSleepHelperProtocol {
                 let actual = try PowerSettings.sleepDisabled(from: Self.pmset(["-g"]))
                 guard actual == enabled else {
                     throw NSError(domain: HelperConfiguration.serviceName, code: 1,
-                                  userInfo: [NSLocalizedDescriptionKey: "전원 설정 변경을 확인하지 못했습니다."])
+                                  userInfo: [NSLocalizedDescriptionKey: L10n.tr("The power setting change could not be verified.")])
                 }
                 reply(nil)
             } catch { reply(error.localizedDescription) }
@@ -80,7 +80,7 @@ final class PowerControl: NSObject, NonSleepHelperProtocol {
         timeout.cancel()
         guard process.terminationStatus == 0 else {
             throw NSError(domain: HelperConfiguration.serviceName, code: Int(process.terminationStatus),
-                          userInfo: [NSLocalizedDescriptionKey: "전원 설정 작업이 실패했습니다."])
+                          userInfo: [NSLocalizedDescriptionKey: L10n.tr("The power setting operation failed.")])
         }
         return String(data: data, encoding: .utf8) ?? ""
     }

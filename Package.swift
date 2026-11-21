@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "NonSleep",
+    defaultLocalization: "en",
     platforms: [.macOS(.v14)],
     products: [
         .executable(name: "NonSleep", targets: ["NonSleep"]),
@@ -12,7 +13,7 @@ let package = Package(
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1")
     ],
     targets: [
-        .target(name: "NonSleepCore"),
+        .target(name: "NonSleepCore", resources: [.process("Resources")]),
         .executableTarget(name: "NonSleep", dependencies: ["NonSleepCore", .product(name: "Sparkle", package: "Sparkle")],
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
         .executableTarget(name: "NonSleepHelper", dependencies: ["NonSleepCore"]),

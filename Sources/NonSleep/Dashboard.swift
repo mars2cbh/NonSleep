@@ -1,3 +1,4 @@
+import NonSleepCore
 import SwiftUI
 
 private let leaf = Color(red: 0.23, green: 0.49, blue: 0.37)
@@ -9,37 +10,39 @@ struct Dashboard: View {
         scheme == .dark ? Color(red: 0.10, green: 0.12, blue: 0.11) : Color(red: 0.96, green: 0.96, blue: 0.93)
     }
 
+    @ObservedObject private var language = LanguageSettings.shared
+
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             header
             hero
             VStack(spacing: 10) {
-                FeatureRow(icon: "sun.max", title: "잠자기 방지", tag: model.awake ? "사용 중" : nil,
-                    detail: "Mac과 화면을 깨어 있게 유지합니다.",
-                    note: model.lid && !model.awake ? "덮개 모드에 의해 시스템 잠자기는 계속 방지됩니다." : nil,
+                FeatureRow(icon: "sun.max", title: L10n.tr("Keep Awake"), tag: model.awake ? L10n.tr("Active") : nil,
+                    detail: L10n.tr("Keep your Mac and display awake."),
+                    note: model.lid && !model.awake ? L10n.tr("Closed-lid mode is still preventing system sleep.") : nil,
                     isOn: Binding(get: { model.awake }, set: { model.setAwake($0) }),
                     busy: false, disabled: model.busy != nil, activeColor: Color(nsColor: StatusAppearance.awake.color))
 
-                FeatureRow(icon: "laptopcomputer", title: "덮어도 깨어 있기",
-                    tag: model.lidKnown ? (model.lid ? "사용 중" : "관리자 권한") : "확인 중",
-                    detail: "MacBook 덮개를 닫아도 작업을 계속합니다.",
-                    note: "시스템 잠자기도 함께 차단됩니다. 기기·macOS에 따라 동작이 다를 수 있습니다.",
+                FeatureRow(icon: "laptopcomputer", title: L10n.tr("Stay Awake with Lid Closed"),
+                    tag: model.lidKnown ? (model.lid ? L10n.tr("Active") : L10n.tr("Admin access")) : L10n.tr("Checking…"),
+                    detail: L10n.tr("Keep working with your MacBook lid closed."),
+                    note: L10n.tr("Also prevents system sleep. Behavior may vary by Mac and macOS version."),
                     isOn: Binding(get: { model.lid }, set: { value in Task { await model.setLid(value) } }),
                     busy: model.busy == "lid", disabled: model.busy != nil || !model.lidKnown,
                     activeColor: Color(nsColor: StatusAppearance.lid.color))
 
-                FeatureRow(icon: "moon", title: "방해 금지",
-                    tag: !model.focusConfigured ? "설정 필요" : (model.focusRequest == nil ? "상태 미확인" : "단축어 실행됨"),
-                    detail: "알림을 잠시 멈추고, 하던 일에 집중하세요.",
-                    note: model.focusConfigured ? "최근 단축어 실행 기준입니다. 시스템에서 바꾼 상태는 반영되지 않습니다." : "처음 한 번, 켜기·끄기 단축어를 연결해 주세요.",
+                FeatureRow(icon: "moon", title: L10n.tr("Do Not Disturb"),
+                    tag: !model.focusConfigured ? L10n.tr("Setup needed") : (model.focusRequest == nil ? L10n.tr("Status unknown") : L10n.tr("Shortcut ran")),
+                    detail: L10n.tr("Pause notifications and focus on your work."),
+                    note: model.focusConfigured ? L10n.tr("Shows the last shortcut request. Changes made in macOS are not reflected here.") : L10n.tr("Connect separate On and Off shortcuts to get started."),
                     isOn: Binding(get: { model.focusRequest == true }, set: { value in Task { await model.setFocus(value) } }),
                     busy: model.busy == "focus", disabled: model.busy != nil,
                     activeColor: Color(nsColor: StatusAppearance.focus.color))
                 .contextMenu {
-                    Button("방해 금지 켜기 실행") { Task { await model.setFocus(true) } }
-                    Button("방해 금지 끄기 실행") { Task { await model.setFocus(false) } }
+                    Button(L10n.tr("Turn On Do Not Disturb")) { Task { await model.setFocus(true) } }
+                    Button(L10n.tr("Turn Off Do Not Disturb")) { Task { await model.setFocus(false) } }
                     Divider()
-                    Button("단축어 설정…") { model.openSettings(.focus) }
+                    Button(L10n.tr("Shortcut Settings…")) { model.openSettings(.focus) }
                 }
             }
 
@@ -47,12 +50,12 @@ struct Dashboard: View {
                 HStack(alignment: .top, spacing: 9) {
                     Image(systemName: "arrow.uturn.backward.circle").foregroundStyle(leaf)
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("덮개 설정 복원 가능").font(.system(size: 12, weight: .semibold))
-                        Text("앱 종료 시 이전 전원 설정으로 복원합니다. 강제 종료 후에는 여기서 복원할 수 있습니다.")
+                        Text(L10n.tr("Power settings can be restored")).font(.system(size: 12, weight: .semibold))
+                        Text(L10n.tr("Previous power settings are restored on quit. After a forced quit, restore them here."))
                             .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 0)
-                    Button("복원") { Task { await model.restoreLid() } }
+                    Button(L10n.tr("Restore")) { Task { await model.restoreLid() } }
                         .font(.system(size: 11, weight: .medium)).disabled(model.busy != nil || !model.lidKnown)
                 }
                 .padding(12).background(leaf.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
@@ -64,14 +67,15 @@ struct Dashboard: View {
         .frame(width: 466)
         .background(background)
         .tint(leaf)
+        .environment(\.locale, language.locale)
         .task { await model.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             Task { await model.refresh() }
         }
-        .alert("작업을 완료하지 못했어요", isPresented: Binding(
+        .alert(L10n.tr("Couldn’t Complete Action"), isPresented: Binding(
             get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } }
         )) {
-            Button("확인", role: .cancel) { model.errorMessage = nil }
+            Button(L10n.tr("OK"), role: .cancel) { model.errorMessage = nil }
         } message: { Text(model.errorMessage ?? "") }
     }
 
@@ -92,12 +96,12 @@ struct Dashboard: View {
     private var hero: some View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 9) {
-                Text("깨어 있는 Mac.\n끊김 없는 몰입.")
+                Text(L10n.tr("Your Mac, awake.\nYour focus, uninterrupted."))
                     .font(.system(size: 27, weight: .semibold)).tracking(-1)
-                    .lineSpacing(3)
+                    .lineSpacing(3).lineLimit(2).minimumScaleFactor(0.8)
                 HStack(spacing: 6) {
                     Circle().fill(model.activeCount > 0 ? leaf : Color.secondary.opacity(0.5)).frame(width: 6, height: 6)
-                    Text(model.activeCount > 0 ? "\(model.activeCount)개 기능 사용 중" : "필요한 기능을 켜보세요")
+                    Text(model.activeCount > 0 ? L10n.tr("Enabled features: %d", model.activeCount) : L10n.tr("Turn on the features you need"))
                         .font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
                 }
             }
@@ -118,21 +122,21 @@ struct Dashboard: View {
         VStack(alignment: .leading, spacing: 13) {
             HStack(alignment: .top, spacing: 6) {
                 Image(systemName: "info.circle").font(.system(size: 10)).padding(.top, 1)
-                Text("종료하면 잠자기 방지는 해제됩니다. 방해 금지는 유지되며, 허용한 알림은 집중 모드 설정을 따릅니다.")
+                Text(L10n.tr("Quitting releases sleep prevention. Do Not Disturb stays on, and notification exceptions follow your Focus settings."))
                     .font(.system(size: 10)).fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(.secondary)
             HStack {
                 Button { model.openSettings() } label: {
-                    Label("설정", systemImage: "gearshape")
+                    Label(L10n.tr("Settings"), systemImage: "gearshape")
                 }
                 .buttonStyle(.plain)
                 Spacer()
                 Button { Task { await model.refresh() } } label: {
-                    Image(systemName: "arrow.clockwise").accessibilityLabel("전원 상태 새로고침")
+                    Image(systemName: "arrow.clockwise").accessibilityLabel(L10n.tr("Refresh power status"))
                 }
                 .buttonStyle(.plain).disabled(model.busy != nil)
-                Button("종료") { NSApp.terminate(nil) }
+                Button(L10n.tr("Quit")) { NSApp.terminate(nil) }
                     .buttonStyle(.plain).padding(.leading, 12).disabled(model.busy != nil)
             }
             .font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
@@ -177,7 +181,7 @@ private struct FeatureRow: View {
             Spacer(minLength: 0)
             if busy {
                 ProgressView().controlSize(.small).frame(width: 34, height: 22)
-                    .accessibilityLabel("\(title) 변경 중")
+                    .accessibilityLabel(L10n.tr("Changing %@", title))
             } else {
                 Toggle(title, isOn: $isOn).labelsHidden().toggleStyle(.switch).controlSize(.small)
                     .disabled(disabled).accessibilityLabel(title)

@@ -1,3 +1,4 @@
+import NonSleepCore
 import AppKit
 
 enum StatusAppearance: Int, CaseIterable {
@@ -34,10 +35,10 @@ enum StatusAppearance: Int, CaseIterable {
 
     var featureDescription: String {
         var names: [String] = []
-        if rawValue & 1 != 0 { names.append("잠자기 방지") }
-        if rawValue & 2 != 0 { names.append("덮어도 깨어 있기") }
-        if rawValue & 4 != 0 { names.append("방해 금지(최근 요청)") }
-        return names.isEmpty ? "모든 기능 꺼짐" : names.joined(separator: " + ")
+        if rawValue & 1 != 0 { names.append(L10n.tr("Keep Awake")) }
+        if rawValue & 2 != 0 { names.append(L10n.tr("Stay Awake with Lid Closed")) }
+        if rawValue & 4 != 0 { names.append(L10n.tr("Do Not Disturb (last request)")) }
+        return names.isEmpty ? L10n.tr("All features off") : names.joined(separator: " + ")
     }
 
     @MainActor

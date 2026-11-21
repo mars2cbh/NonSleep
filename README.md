@@ -42,6 +42,14 @@ swift test --disable-sandbox --cache-path "$PWD/.build/cache"
 | 덮어도 깨어 있기 | `pmset -a disablesleep 1` 적용 및 읽기 검증 | 설정에서 전원 도우미를 한 번 등록하거나, 전환할 때마다 관리자 인증 |
 | 방해 금지 | 연결한 Apple 단축어로 집중 모드 켜기·끄기 | 아래 단축어 두 개 연결 |
 
+### 한국어와 English
+
+기본 언어는 macOS의 언어 설정을 따릅니다. 한국어가 우선이면 한국어로, 영어가 우선이거나 지원 언어가 없으면 영어로 표시합니다.
+
+**설정 → 일반 → 언어**에서 **시스템 설정 따르기 / English / 한국어**를 선택할 수 있습니다. 제어판·설정·메뉴·안내 문구는 즉시 바뀌며 선택은 재실행 후에도 유지됩니다. Sparkle 업데이트 창에는 재실행 후 적용됩니다. macOS 인증 창과 외부 앱은 시스템의 언어 설정을 따릅니다.
+
+번역은 `Sources/NonSleepCore/Resources/en.lproj/Localizable.strings`와 `ko.lproj/Localizable.strings`에 있습니다. 릴리스 앱에는 이 리소스 번들을 포함합니다.
+
 ### 자동 실행과 관리자 권한 설정
 
 상태바 커피잔 → **설정 → 일반**에서 관리합니다. 우클릭 메뉴의 ‘설정…’ 또는 `⌘,`로도 열 수 있습니다.

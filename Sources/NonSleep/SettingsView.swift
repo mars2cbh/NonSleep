@@ -1,3 +1,4 @@
+import NonSleepCore
 import SwiftUI
 
 struct SettingsView: View {
@@ -11,117 +12,133 @@ struct SettingsView: View {
         self.onClose = onClose
     }
 
+    @ObservedObject private var language = LanguageSettings.shared
+
     var body: some View {
         TabView(selection: $model.settingsTab) {
-            general.tabItem { Label("일반", systemImage: "gearshape") }.tag(SettingsTab.general)
-            FocusSetup(model: model, onDone: onClose).tabItem { Label("방해 금지", systemImage: "moon") }.tag(SettingsTab.focus)
+            general.tabItem { Label(L10n.tr("General"), systemImage: "gearshape") }.tag(SettingsTab.general)
+            FocusSetup(model: model, onDone: onClose).tabItem { Label(L10n.tr("Do Not Disturb"), systemImage: "moon") }.tag(SettingsTab.focus)
             UpdateSettingsView(updates: model.updates, onClose: onClose)
-                .tabItem { Label("업데이트", systemImage: "arrow.triangle.2.circlepath") }.tag(SettingsTab.updates)
+                .tabItem { Label(L10n.tr("Updates"), systemImage: "arrow.triangle.2.circlepath") }.tag(SettingsTab.updates)
         }
+        .environment(\.locale, language.locale)
         .padding(.top, 12)
         .frame(width: 542, height: 700)
         .task { await settings.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             Task { await settings.refresh() }
         }
-        .alert("설정을 변경하지 못했어요", isPresented: Binding(
+        .alert(L10n.tr("Couldn’t Change Settings"), isPresented: Binding(
             get: { settings.errorMessage != nil }, set: { if !$0 { settings.errorMessage = nil } }
         )) {
-            Button("확인", role: .cancel) { settings.errorMessage = nil }
+            Button(L10n.tr("OK"), role: .cancel) { settings.errorMessage = nil }
         } message: { Text(settings.errorMessage ?? "") }
     }
 
     private var general: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            HStack(spacing: 12) {
-                Image(systemName: "gearshape.circle.fill").font(.system(size: 34)).foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("NonSleep 설정").font(.system(size: 21, weight: .semibold))
-                    Text("자동 실행과 전원 권한을 한곳에서 관리하세요.")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 11) {
-                Toggle(isOn: Binding(get: { settings.loginEnabled }, set: { enabled in
-                    Task { await settings.setLoginEnabled(enabled) }
-                })) {
-                    Label("로그인 시 자동 실행", systemImage: "power")
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .toggleStyle(.switch).disabled(settings.busy || model.busy != nil)
-                Text("Mac에 로그인하면 메뉴 막대에 NonSleep을 실행합니다.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
-                HStack {
-                    Text(settings.loginStatusTitle).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("로그인 항목 열기", action: settings.openLoginSettings).font(.system(size: 11))
-                }
-                Text("앱을 응용 프로그램 폴더에 둔 뒤 설정하면 편리합니다.")
-                    .font(.system(size: 10)).foregroundStyle(.secondary)
-            }
-            .padding(17).background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
-
-            VStack(alignment: .leading, spacing: 13) {
-                HStack {
-                    Label("덮개 잠자기 권한", systemImage: "lock.shield")
-                        .font(.system(size: 13, weight: .semibold))
-                    Spacer()
-                    if settings.busy || settings.refreshing { ProgressView().controlSize(.small) }
-                }
-                Text("전원 도우미를 등록할 때 관리자 인증을 한 번 받습니다. 등록 후에는 덮개 기능을 켜거나 끌 때, 앱 종료 시 복원할 때도 반복 인증 없이 사용할 수 있습니다.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                Label(settings.helperState.title, systemImage: settings.helperState == .ready ? "checkmark.circle.fill" : "info.circle")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(settings.helperState == .ready ? Color.green : .secondary)
-                HStack {
-                    Button(helperActionTitle) {
-                        Task { await settings.installHelper() }
-                    }
-                    .disabled(settings.busy || settings.refreshing || model.busy != nil)
-                    Button("상태 확인") { Task { await settings.refresh() } }
-                        .disabled(settings.busy || settings.refreshing)
-                    Spacer()
-                    if settings.helperState != .notInstalled && settings.helperState != .checking {
-                        Button("제거…") { Task { await settings.removeHelper() } }
-                            .disabled(settings.busy || settings.refreshing || model.busy != nil || model.lid || model.recovery != nil)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                HStack(spacing: 12) {
+                    Image(systemName: "gearshape.circle.fill").font(.system(size: 34)).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L10n.tr("NonSleep Settings")).font(.system(size: 21, weight: .semibold))
+                        Text(L10n.tr("Manage startup and power permissions in one place."))
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                 }
-                .font(.system(size: 11))
-                if model.lid || model.recovery != nil {
-                    Text("도우미를 제거하려면 덮개 잠자기 방지를 끄고 전원 설정을 복원해 주세요.")
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker(L10n.tr("Language"), selection: $language.selection) {
+                        Text(L10n.tr("Follow System Settings")).tag(AppLanguage.system)
+                        Text("English").tag(AppLanguage.english)
+                        Text("한국어").tag(AppLanguage.korean)
+                    }
+                    .font(.system(size: 12))
+                    Text(L10n.tr("Some system dialogs use the new language after restarting the app."))
                         .font(.system(size: 10)).foregroundStyle(.secondary)
                 }
-                Divider()
-                Text(settings.helperState == .appUpdated
-                     ? "기존 도우미는 설치되어 있습니다. 앱을 새로 빌드해 서명이 바뀌었으므로 한 번만 권한 승인을 갱신해 주세요. 앱을 껐다 켜는 것만으로는 다시 승인하지 않습니다."
-                     : "도우미는 잠자기 설정만 변경하며 인증 비밀번호를 저장하지 않습니다. 승인은 앱 재실행 후에도 유지됩니다. 개발용 앱을 새로 빌드하면 권한 갱신이 필요할 수 있습니다.")
-                    .font(.system(size: 10)).foregroundStyle(.secondary).lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(17).background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
 
-            Text("도우미를 등록하지 않아도 덮개 기능은 매번 관리자 인증을 받아 사용할 수 있습니다. 방해 금지 단축어는 위의 ‘방해 금지’ 탭에서 연결하세요.")
-                .font(.system(size: 10)).foregroundStyle(.secondary).lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-            HStack {
-                Text("NonSleep \(model.updates.installedVersion)")
-                    .font(.system(size: 10)).foregroundStyle(.tertiary)
-                Spacer()
-                Button("완료", action: onClose).keyboardShortcut(.defaultAction)
-                    .disabled(settings.busy)
+                VStack(alignment: .leading, spacing: 11) {
+                    Toggle(isOn: Binding(get: { settings.loginEnabled }, set: { enabled in
+                        Task { await settings.setLoginEnabled(enabled) }
+                    })) {
+                        Label(L10n.tr("Launch at login"), systemImage: "power")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .toggleStyle(.switch).disabled(settings.busy || model.busy != nil)
+                    Text(L10n.tr("Start NonSleep in the menu bar when you log in."))
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                    HStack {
+                        Text(settings.loginStatusTitle).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+                        Spacer()
+                        Button(L10n.tr("Open Login Items"), action: settings.openLoginSettings).font(.system(size: 11))
+                    }
+                    Text(L10n.tr("Move the app to Applications before enabling this option."))
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                }
+                .padding(17).background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
+
+                VStack(alignment: .leading, spacing: 13) {
+                    HStack {
+                        Label(L10n.tr("Closed-Lid Permission"), systemImage: "lock.shield")
+                            .font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        if settings.busy || settings.refreshing { ProgressView().controlSize(.small) }
+                    }
+                    Text(L10n.tr("Authenticate once to register the power helper. Then toggle closed-lid mode and restore power settings on quit without repeated authentication."))
+                        .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Label(settings.helperState.title, systemImage: settings.helperState == .ready ? "checkmark.circle.fill" : "info.circle")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(settings.helperState == .ready ? Color.green : .secondary)
+                    HStack {
+                        Button(helperActionTitle) {
+                            Task { await settings.installHelper() }
+                        }
+                        .disabled(settings.busy || settings.refreshing || model.busy != nil)
+                        Button(L10n.tr("Check Status")) { Task { await settings.refresh() } }
+                            .disabled(settings.busy || settings.refreshing)
+                        Spacer()
+                        if settings.helperState != .notInstalled && settings.helperState != .checking {
+                            Button(L10n.tr("Remove…")) { Task { await settings.removeHelper() } }
+                                .disabled(settings.busy || settings.refreshing || model.busy != nil || model.lid || model.recovery != nil)
+                        }
+                    }
+                    .font(.system(size: 11))
+                    if model.lid || model.recovery != nil {
+                        Text(L10n.tr("Turn off closed-lid mode and restore power settings before removing the helper."))
+                            .font(.system(size: 10)).foregroundStyle(.secondary)
+                    }
+                    Divider()
+                    Text(settings.helperState == .appUpdated
+                         ? L10n.tr("The helper is still installed. This new build has a different signature, so renew approval once. Restarting the same build does not require approval again.")
+                         : L10n.tr("The helper only changes sleep settings and never stores your password. Approval survives app restarts. A new development build may need renewed approval."))
+                        .font(.system(size: 10)).foregroundStyle(.secondary).lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(17).background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
+
+                Text(L10n.tr("Without the helper, closed-lid mode asks for authentication each time. Connect Focus shortcuts in the Do Not Disturb tab."))
+                    .font(.system(size: 10)).foregroundStyle(.secondary).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                HStack {
+                    Text("NonSleep \(model.updates.installedVersion)")
+                        .font(.system(size: 10)).foregroundStyle(.tertiary)
+                    Spacer()
+                    Button(L10n.tr("Done"), action: onClose).keyboardShortcut(.defaultAction)
+                        .disabled(settings.busy)
+                }
             }
+            .padding(26)
         }
-        .padding(26)
     }
 
     private var helperActionTitle: String {
         switch settings.helperState {
-        case .notInstalled: return "관리자 권한 받기…"
-        case .appUpdated: return "업데이트 권한 승인…"
-        default: return "도우미 다시 등록…"
+        case .notInstalled: return L10n.tr("Authorize Helper…")
+        case .appUpdated: return L10n.tr("Approve Update…")
+        default: return L10n.tr("Register Helper Again…")
         }
     }
 }

@@ -19,12 +19,12 @@ public enum UpdateError: LocalizedError {
     case invalidInstalledVersion, invalidReleaseVersion, invalidReleaseURL, missingAssets, rateLimited, http(Int)
     public var errorDescription: String? {
         switch self {
-        case .invalidInstalledVersion: return "현재 앱의 버전 정보를 읽지 못했습니다."
-        case .invalidReleaseVersion: return "GitHub Release가 CalVer 버전 형식이 아닙니다."
-        case .invalidReleaseURL: return "공식 NonSleep 저장소의 업데이트 파일이 아닙니다."
-        case .missingAssets: return "이 Mac용 업데이트 파일이나 설치 정보가 아직 준비되지 않았습니다. 잠시 후 다시 확인해 주세요."
-        case .rateLimited: return "GitHub 요청 한도에 도달했습니다. 잠시 후 다시 확인해 주세요."
-        case .http(let code): return "GitHub에 연결하지 못했습니다. (HTTP \(code))"
+        case .invalidInstalledVersion: return L10n.tr("The installed app version could not be read.")
+        case .invalidReleaseVersion: return L10n.tr("The GitHub release does not use a valid CalVer version.")
+        case .invalidReleaseURL: return L10n.tr("This update is not from the official NonSleep repository.")
+        case .missingAssets: return L10n.tr("The update files for this Mac are not ready yet. Please check again later.")
+        case .rateLimited: return L10n.tr("GitHub’s request limit was reached. Please check again later.")
+        case .http(let code): return L10n.tr("Could not connect to GitHub. (HTTP %d)", code)
         }
     }
 }
