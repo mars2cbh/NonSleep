@@ -114,6 +114,23 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "dist/$archive"
           cd dist
           shasum -a 256 "$archive" > "$archive.sha256"
+      - name: Set up Python for DMG packaging
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Create drag-to-Applications DMG
+        env:
+          ARCH: ${{ matrix.arch }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          APP_DIR: ${{ runner.temp }}/NonSleep.app
+        run: |
+          python3 -m venv .build/dmg-tools
+          .build/dmg-tools/bin/python -m pip install --disable-pip-version-check \
+            --only-binary=:all: --require-hashes -r scripts/dmg-requirements.txt
+          dmg="NonSleep-$VERSION-macos-$ARCH.dmg"
+          .build/dmg-tools/bin/python scripts/create_dmg.py \
+            --app "$APP_DIR" --arch "$ARCH" --output "dist/$dmg"
+          (cd dist && shasum -a 256 "$dmg" > "$dmg.sha256")
       - name: Store release files
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -163,6 +180,7 @@ jobs:
           name: release-assets
           path: |
             dist/*.zip
+            dist/*.dmg
             dist/appcast-*.xml
             dist/SHA256SUMS.txt
           if-no-files-found: error
@@ -195,6 +213,8 @@ jobs:
           set -euo pipefail
           archives=(NonSleep-*-macos-*.zip)
           test "${#archives[@]}" -eq 2
+          images=(NonSleep-*-macos-*.dmg)
+          test "${#images[@]}" -eq 2
           feeds=(appcast-*.xml)
           test "${#feeds[@]}" -eq 2
           sha256sum --check SHA256SUMS.txt
@@ -213,8 +233,15 @@ jobs:
             fi
           else
             cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
-          Choose the ZIP for your Mac: `arm64` for Apple Silicon, `x86_64` for Intel.
-          Extract `NonSleep.app` and move it to Applications. Requires macOS 14 or later.
+          Download the DMG for your Mac: `arm64` for Apple Silicon, `x86_64` for Intel.
+          Open it and drag NonSleep into Applications, then eject the disk image.
+          Launch NonSleep from Applications. Requires macOS 14 or later.
+
+          Mac에 맞는 DMG를 다운로드하세요: Apple Silicon은 `arm64`, Intel은 `x86_64`입니다.
+          DMG를 열고 NonSleep을 Applications 폴더로 끌어 설치한 뒤 디스크를 추출하세요.
+          응용 프로그램 폴더에서 NonSleep을 실행하세요. macOS 14 이상이 필요합니다.
+
+          ZIPs are also provided for in-app updates and manual extraction.
 
           These builds use ad-hoc signing and are not notarized by Apple.
           Updates can be checked and installed from Settings → Updates.
@@ -232,6 +259,6 @@ jobs:
           fi
 
           gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-            "${archives[@]}" "${feeds[@]}" SHA256SUMS.txt --clobber
+            "${images[@]}" "${archives[@]}" "${feeds[@]}" SHA256SUMS.txt --clobber
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
             --draft=false --prerelease="$PRERELEASE"

@@ -43,6 +43,19 @@ def run_signer(signer, secret, *arguments):
     return result.stdout.strip()
 
 
+def release_files(dist, version):
+    """Require the full payload so a missing DMG cannot be silently published."""
+    paths = []
+    for arch in ("arm64", "x86_64"):
+        paths.extend([dist / f"NonSleep-{version}-macos-{arch}.dmg",
+                      dist / f"NonSleep-{version}-macos-{arch}.zip",
+                      dist / f"appcast-{arch}.xml"])
+    for path in paths:
+        if not path.is_file() or path.stat().st_size == 0:
+            raise ValueError(f"Missing or empty release file: {path.name}")
+    return paths
+
+
 def generate(dist, version, signer, secret, public_key):
     if not secret:
         raise ValueError("Configure the SPARKLE_PRIVATE_KEY GitHub Actions secret first")
@@ -58,7 +71,6 @@ def generate(dist, version, signer, secret, public_key):
         archives.append((arch, archive, info))
     if len({info["CFBundleVersion"] for _, _, info in archives}) != 1:
         raise ValueError("Architecture builds must have the same build number")
-    outputs = []
     for arch, archive, info in archives:
         signature = run_signer(signer, secret, "-p", archive)
         if len(base64.b64decode(signature, validate=True)) != 64:
@@ -88,7 +100,7 @@ def generate(dist, version, signer, secret, public_key):
         # Sparkle 2.10 signs the feed itself as well as its enclosed archive.
         run_signer(signer, secret, feed)
         run_signer(signer, secret, "--verify", feed)
-        outputs.extend((archive, feed))
+    outputs = release_files(dist, version)
     with (dist / "SHA256SUMS.txt").open("w") as checksums:
         for path in outputs:
             with path.open("rb") as stream:
@@ -109,7 +121,7 @@ def main():
             public_key = plistlib.load(source)["SUPublicEDKey"]
         outputs = generate(args.dist, CalVer.parse(args.version), args.signer,
                            os.environ.get("SPARKLE_PRIVATE_KEY", ""), public_key)
-        print("Signed and verified: " + ", ".join(path.name for path in outputs))
+        print("Prepared and verified: " + ", ".join(path.name for path in outputs))
     except (ValueError, KeyError, OSError, zipfile.BadZipFile) as error:
         parser.exit(1, f"Release metadata error: {error}\n")
 

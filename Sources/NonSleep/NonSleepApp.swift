@@ -62,6 +62,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             }
         Task { await model.refresh() }
         model.updates.startAutomaticChecks()
+        model.hotkeys.start { [weak self] action in self?.performHotKeyAction(action) }
+    }
+
+    private func performHotKeyAction(_ action: HotKeyAction) {
+        guard model.busy == nil, !model.settings.busy else { return }
+        Task {
+            switch action {
+            case .awake: model.setAwake(!model.awake)
+            case .lid:
+                if !model.lidKnown { await model.refresh() }
+                await model.setLid(!model.lid)
+            case .focus:
+                guard model.focusConfigured else { openFocusSetup(); return }
+                await model.setFocus(model.focusRequest != true)
+            }
+            if model.errorMessage != nil { showPopover() }
+        }
     }
 
     private func rebuildApplicationMenu() {

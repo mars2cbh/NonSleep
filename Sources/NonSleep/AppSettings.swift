@@ -3,7 +3,7 @@ import AppKit
 import Combine
 import ServiceManagement
 
-enum SettingsTab: Hashable { case general, focus, updates }
+enum SettingsTab: Hashable { case general, focus, hotkeys, updates }
 enum HelperState {
     case checking, notInstalled, ready, appUpdated, needsUpdate, unavailable
     var title: String {

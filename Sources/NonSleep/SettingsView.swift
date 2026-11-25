@@ -18,6 +18,8 @@ struct SettingsView: View {
         TabView(selection: $model.settingsTab) {
             general.tabItem { Label(L10n.tr("General"), systemImage: "gearshape") }.tag(SettingsTab.general)
             FocusSetup(model: model, onDone: onClose).tabItem { Label(L10n.tr("Do Not Disturb"), systemImage: "moon") }.tag(SettingsTab.focus)
+            HotKeySettingsView(hotkeys: model.hotkeys, onClose: onClose)
+                .tabItem { Label(L10n.tr("Hotkeys"), systemImage: "keyboard") }.tag(SettingsTab.hotkeys)
             UpdateSettingsView(updates: model.updates, onClose: onClose)
                 .tabItem { Label(L10n.tr("Updates"), systemImage: "arrow.triangle.2.circlepath") }.tag(SettingsTab.updates)
         }

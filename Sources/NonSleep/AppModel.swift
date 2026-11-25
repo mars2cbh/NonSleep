@@ -21,6 +21,7 @@ final class AppModel: ObservableObject {
     private let defaults: UserDefaults
     let settings = AppSettings()
     let updates = AppUpdates()
+    let hotkeys = HotKeySettings()
     private let power = AwakeService()
     private var quitting = false
     var focusConfigured: Bool { !shortcutOn.isEmpty && !shortcutOff.isEmpty && shortcutOn != shortcutOff }
