@@ -102,7 +102,9 @@ Helper approval survives restarting the same app build. Development ad-hoc signa
 4. In NonSleep’s **Settings → Do Not Disturb**, refresh the list and select each shortcut.
 5. To silence notifications, open **System Settings → Focus → Do Not Disturb**, remove allowed people and apps, and turn off exceptions such as repeated calls and time-sensitive notifications. NonSleep cannot override exceptions that macOS permits, including certain critical alerts.
 
-Shortcut names are passed as process arguments, never inserted into a shell. NonSleep only checks the shortcut’s exit status. It cannot inspect the shortcut’s actions or verify the actual Focus state, so the switch shows the **last execution request**. The state is unknown after relaunching the app or changing Focus directly in macOS. To turn it off while the status is unknown, use the Do Not Disturb row’s context menu or **Run Off Shortcut** in Settings. Focus remains enabled after quitting NonSleep.
+Run both shortcuts directly in Shortcuts once, approve any prompts, and confirm **Do Not Disturb** changes in Control Center. Then use **Test On** and **Test Off** in NonSleep. Execution and list errors appear in the setup screen; **Edit Shortcut** opens the selected shortcut for troubleshooting.
+
+NonSleep stores stable shortcut identifiers, so renaming a connected shortcut preserves its connection. Older name-based connections are migrated when the list is refreshed; if a name is duplicated or a shortcut has been deleted, select the intended shortcut again. Identifiers are passed as process arguments, never inserted into a shell. NonSleep only checks the shortcut’s exit status. It cannot inspect the shortcut’s actions or verify the actual Focus state, so the switch shows the **last execution request**. The state is unknown after relaunching the app or changing Focus directly in macOS. To turn it off while the status is unknown, use the Do Not Disturb row’s context menu or **Test Off** in Settings. Focus remains enabled after quitting NonSleep.
 
 ### Closed-lid mode and restoration
 

@@ -156,3 +156,14 @@
 "This shortcut could not be registered (macOS error %d). Choose another combination." = "This shortcut could not be registered (macOS error %d). Choose another combination.";
 "Click a shortcut, then press your key combination. Include Control (⌃) or Option (⌥). Press Escape to cancel or Delete to clear." = "Click a shortcut, then press your key combination. Include Control (⌃) or Option (⌥). Press Escape to cancel or Delete to clear.";
 "Closed-lid mode uses your existing power permissions. Set up the On and Off shortcuts in the Do Not Disturb tab before using its hotkey." = "Closed-lid mode uses your existing power permissions. Set up the On and Off shortcuts in the Do Not Disturb tab before using its hotkey.";
+
+/* Focus shortcut troubleshooting */
+"The shortcut list could not be read. Open Shortcuts, then refresh the list." = "The shortcut list could not be read. Open Shortcuts, then refresh the list.";
+"The selected shortcut is missing or has a duplicate name. Refresh the list and select it again." = "The selected shortcut is missing or has a duplicate name. Refresh the list and select it again.";
+"On shortcut finished. Check Do Not Disturb in Control Center; completion alone does not confirm Focus changed." = "On shortcut finished. Check Do Not Disturb in Control Center; completion alone does not confirm Focus changed.";
+"Off shortcut finished. Check Do Not Disturb in Control Center; completion alone does not confirm Focus changed." = "Off shortcut finished. Check Do Not Disturb in Control Center; completion alone does not confirm Focus changed.";
+"Could not run the Do Not Disturb shortcut. %@ Open it in Shortcuts and run it once to check its actions and any permission prompts." = "Could not run the Do Not Disturb shortcut. %@ Open it in Shortcuts and run it once to check its actions and any permission prompts.";
+"Use explicit On and Off actions, not Toggle. Run both once in Shortcuts and confirm Control Center changes before connecting them here." = "Use explicit On and Off actions, not Toggle. Run both once in Shortcuts and confirm Control Center changes before connecting them here.";
+"Test On" = "Test On";
+"Test Off" = "Test Off";
+"Edit Shortcut" = "Edit Shortcut";

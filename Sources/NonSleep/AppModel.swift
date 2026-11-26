@@ -9,16 +9,19 @@ final class AppModel: ObservableObject {
     @Published private(set) var lidKnown = false
     @Published private(set) var focusRequest: Bool? = nil
     @Published private(set) var busy: String?
-    @Published private(set) var shortcuts: [String] = []
+    @Published private(set) var shortcuts: [FocusShortcut] = []
     @Published private(set) var loadingShortcuts = false
+    @Published private(set) var focusError: String?
+    @Published private(set) var focusFeedback: String?
     @Published var errorMessage: String?
     @Published var showingSettings = false
     @Published var settingsTab: SettingsTab = .general
-    @Published var shortcutOn: String { didSet { defaults.set(shortcutOn, forKey: "shortcutOn") } }
-    @Published var shortcutOff: String { didSet { defaults.set(shortcutOff, forKey: "shortcutOff") } }
+    @Published var shortcutOn: String { didSet { defaults.set(shortcutOn, forKey: "shortcutOn"); resetFocusFeedback() } }
+    @Published var shortcutOff: String { didSet { defaults.set(shortcutOff, forKey: "shortcutOff"); resetFocusFeedback() } }
     @Published private(set) var recovery: LidRecovery?
 
     private let defaults: UserDefaults
+    private let focusService: FocusShortcutRunning
     let settings = AppSettings()
     let updates = AppUpdates()
     let hotkeys = HotKeySettings()
@@ -28,8 +31,9 @@ final class AppModel: ObservableObject {
     var activeCount: Int { (awake ? 1 : 0) + (lid ? 1 : 0) + (focusRequest == true ? 1 : 0) }
     var statusAppearance: StatusAppearance { StatusAppearance(awake: awake, lid: lid, focus: focusRequest == true) }
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, focusService: FocusShortcutRunning = FocusService()) {
         self.defaults = defaults
+        self.focusService = focusService
         shortcutOn = defaults.string(forKey: "shortcutOn") ?? ""
         shortcutOff = defaults.string(forKey: "shortcutOff") ?? ""
         if let data = defaults.data(forKey: "lidRecovery") {
@@ -100,28 +104,72 @@ final class AppModel: ObservableObject {
     }
 
     func loadShortcuts() async {
-        guard !loadingShortcuts else { return }
+        guard !loadingShortcuts, busy != "focus" else { return }
         loadingShortcuts = true
         defer { loadingShortcuts = false }
         do {
-            let output = try await Commands.checked("/usr/bin/shortcuts", ["list"])
-            shortcuts = output.components(separatedBy: .newlines).filter { !$0.isEmpty }.sorted()
-        } catch { errorMessage = L10n.tr("Could not load shortcuts. %@", error.localizedDescription) }
+            shortcuts = try await focusService.list()
+            migrateShortcutSelections()
+            focusError = nil
+        } catch { focusError = L10n.tr("Could not load shortcuts. %@", error.localizedDescription) }
     }
 
     func setFocus(_ enabled: Bool) async {
-        guard busy == nil else { return }
-        guard focusConfigured else { openSettings(.focus); return }
+        guard busy == nil, !loadingShortcuts else { return }
+        guard !(enabled ? shortcutOn : shortcutOff).isEmpty else { openSettings(.focus); return }
         busy = "focus"
+        focusError = nil
+        focusFeedback = nil
         defer { busy = nil }
         do {
-            // Pass names as arguments, never through a shell.
-            _ = try await Commands.checked("/usr/bin/shortcuts", ["run", enabled ? shortcutOn : shortcutOff], timeout: 120)
+            // Recheck the catalog so a deleted or renamed shortcut cannot run
+            // by a stale name. Stable identifiers also disambiguate names.
+            shortcuts = try await focusService.list()
+            let shortcut = try FocusService.resolve(enabled ? shortcutOn : shortcutOff, in: shortcuts)
+            let other = try? FocusService.resolve(enabled ? shortcutOff : shortcutOn, in: shortcuts)
+            guard shortcut.id != other?.id else {
+                throw AppError.message(L10n.tr("Choose different shortcuts for On and Off."))
+            }
+            migrateShortcutSelections()
+            try await focusService.run(identifier: shortcut.id)
             focusRequest = enabled
+            focusFeedback = enabled
+                ? L10n.tr("On shortcut finished. Check Do Not Disturb in Control Center; completion alone does not confirm Focus changed.")
+                : L10n.tr("Off shortcut finished. Check Do Not Disturb in Control Center; completion alone does not confirm Focus changed.")
         } catch {
             // A shortcut may partially run before failing. Do not display a stale success state.
             focusRequest = nil
-            errorMessage = L10n.tr("Could not verify the Do Not Disturb shortcut. %@", error.localizedDescription)
+            let message = L10n.tr("Could not run the Do Not Disturb shortcut. %@ Open it in Shortcuts and run it once to check its actions and any permission prompts.", error.localizedDescription)
+            focusError = message
+            if !showingSettings { errorMessage = message }
+        }
+    }
+
+    private func resetFocusFeedback() {
+        focusRequest = nil
+        focusFeedback = nil
+        focusError = nil
+    }
+
+    private func migrateShortcutSelections() {
+        if let shortcut = try? FocusService.resolve(shortcutOn, in: shortcuts), shortcutOn != shortcut.id {
+            shortcutOn = shortcut.id
+        }
+        if let shortcut = try? FocusService.resolve(shortcutOff, in: shortcuts), shortcutOff != shortcut.id {
+            shortcutOff = shortcut.id
+        }
+    }
+
+    func editFocusShortcut(_ selection: String) {
+        Task {
+            do {
+                let shortcut = try FocusService.resolve(selection, in: shortcuts)
+                guard shortcuts.filter({ $0.name == shortcut.name }).count == 1 else {
+                    openShortcuts()
+                    return
+                }
+                _ = try await Commands.checked("/usr/bin/shortcuts", ["view", shortcut.name])
+            } catch { focusError = error.localizedDescription }
         }
     }
 

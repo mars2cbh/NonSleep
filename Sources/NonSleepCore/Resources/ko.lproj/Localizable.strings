@@ -156,3 +156,14 @@
 "This shortcut could not be registered (macOS error %d). Choose another combination." = "단축키를 등록하지 못했습니다. (macOS 오류 %d) 다른 조합을 선택해 주세요.";
 "Click a shortcut, then press your key combination. Include Control (⌃) or Option (⌥). Press Escape to cancel or Delete to clear." = "단축키를 클릭한 뒤 Control(⌃) 또는 Option(⌥)을 포함한 조합을 누르세요. Escape로 취소하고 Delete로 지울 수 있습니다.";
 "Closed-lid mode uses your existing power permissions. Set up the On and Off shortcuts in the Do Not Disturb tab before using its hotkey." = "덮개 기능은 기존 전원 권한을 사용합니다. 방해 금지 단축키를 쓰기 전에 방해 금지 탭에서 켜기·끄기 단축어를 연결해 주세요.";
+
+/* Focus shortcut troubleshooting */
+"The shortcut list could not be read. Open Shortcuts, then refresh the list." = "단축어 목록을 읽지 못했습니다. 단축어 앱을 연 뒤 목록을 새로고침하세요.";
+"The selected shortcut is missing or has a duplicate name. Refresh the list and select it again." = "선택한 단축어가 없거나 이름이 중복됩니다. 목록을 새로고침하고 다시 선택하세요.";
+"On shortcut finished. Check Do Not Disturb in Control Center; completion alone does not confirm Focus changed." = "켜기 단축어가 종료되었습니다. 제어 센터에서 방해 금지를 확인하세요. 실행 완료만으로 집중 모드 변경이 확인되지는 않습니다.";
+"Off shortcut finished. Check Do Not Disturb in Control Center; completion alone does not confirm Focus changed." = "끄기 단축어가 종료되었습니다. 제어 센터에서 방해 금지를 확인하세요. 실행 완료만으로 집중 모드 변경이 확인되지는 않습니다.";
+"Could not run the Do Not Disturb shortcut. %@ Open it in Shortcuts and run it once to check its actions and any permission prompts." = "방해 금지 단축어를 실행하지 못했습니다. %@ 단축어 앱에서 직접 한 번 실행해 동작 설정과 권한 요청을 확인하세요.";
+"Use explicit On and Off actions, not Toggle. Run both once in Shortcuts and confirm Control Center changes before connecting them here." = "토글 대신 각각 켬·끔으로 지정하세요. 연결하기 전에 단축어 앱에서 두 개를 직접 실행해 제어 센터의 상태가 바뀌는지 확인하세요.";
+"Test On" = "켜기 시험";
+"Test Off" = "끄기 시험";
+"Edit Shortcut" = "단축어 편집";

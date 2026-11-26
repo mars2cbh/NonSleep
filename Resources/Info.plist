@@ -11,7 +11,7 @@
 	<key>CFBundleVersion</key>
 	<string>2</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2026.11.25</string>
+	<string>2026.11.26</string>
 	<key>CFBundleExecutable</key>
 	<string>NonSleep</string>
 	<key>CFBundlePackageType</key>
@@ -29,7 +29,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 NonSleep</string>
 	<key>NonSleepReleaseVersion</key>
-	<string>2026.11.25</string>
+	<string>2026.11.26</string>
 	<key>SUPublicEDKey</key>
 	<string>Z/8Cj/ItrwbJzruoUBqa8ZsnvwuoMNsheUUD2H60Gq4=</string>
 	<key>SUEnableAutomaticChecks</key>
